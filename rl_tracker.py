@@ -1,5 +1,4 @@
 import time
-import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -10,9 +9,8 @@ filename = "rl_stats.csv"
 
 
 def initialise_csv(fname):
-    fname = "rl_stats.csv"
     with open(fname, 'w') as f:
-        csv_headers = "DATE,MODE,RANK,MMR,MODE,RANK,MMR,MODE,RANK,MMR,MODE,RANK,MMR,MODE,RANK,MMR,MODE,RANK,MMR,MODE,RANK,MMR,MODE,RANK,MMR\n"
+        csv_headers = f"DATE,{'MODE,RANK,MMR,' * 8}\n"
         f.write(csv_headers)
         print(f'{fname} created.')
 
@@ -22,11 +20,14 @@ if not exists(filename):
 else:
     print(f"{filename} found")
 
+data = ""  # data to write to the csv
+
 with open(filename, 'r+') as f:
     lines = f.readlines()
-    last_line = lines[-1]
-    last_date = last_line.split(",")[0]
+    last_line = lines[-1]  # read last record in file
+    last_date = last_line.split(",")[0]  # date of last record
     today = str(date.today())
+
     if today != last_date:  # only write to csv if new day
 
         RL_TRACKER_URL = 'https://rocketleague.tracker.network/rocket-league/profile/steam/76561198149179287/overview'
@@ -45,7 +46,7 @@ with open(filename, 'r+') as f:
             service=Service('C:\Program Files (x86)\chromedriver.exe'),
             options=options)
         driver.get(RL_TRACKER_URL)
-        time.sleep(4)
+        time.sleep(4)  # let table element load
         source = driver.page_source
 
         # beautiful soup
@@ -53,24 +54,33 @@ with open(filename, 'r+') as f:
 
         table_rows = soup.find("tbody").children
         if table_rows != None:
-            f.write(f'{today},')
 
             for row in table_rows:
 
                 # playlist name (Ranked Doubles 2v2)
                 playlist = row.find("div", {"class": "playlist"}).text.strip()
 
-                # rank name (Champion II Division I)
-                rank = row.find("div", {"class": "rank"}).text
-
-                # mmr (1194)
-                mmr = row.find("div", {"class": "value"}).text
-
                 if playlist != "Un-Ranked":
-                    f.write(f'{playlist},{rank},{mmr.replace(",", "")},')
-                    print(f'Writing {playlist} data')
 
-            f.write('\n')
+                    # rank name (Champion II Division I)
+                    rank = row.find("div", {"class": "rank"}).text
+
+                    # mmr (1194)
+                    mmr_raw = row.find("div", {"class": "value"}).text
+                    mmr = mmr_raw.replace(",", "")
+
+                    print(f'Found {playlist} data')
+                    data += f'{playlist},{rank},{mmr},'
+
+            last_record_elmnts = last_line.split(",")[1::]  # remove date
+            last_record = ",".join(last_record_elmnts)  # rejoin as string
+
+            if last_record.strip() != data.strip():
+                print(f"Writing data to {filename}.")
+                f.write(f'{str(date.today())},{data}')
+                f.write('\n')
+            else:
+                print("Data hasn't changed since last record.")
         else:
             print("Table element couldn't be found")
 
@@ -80,5 +90,5 @@ with open(filename, 'r+') as f:
     else:
         print(f"Error: Data already found for today.")
 
-print("Finished")
+print("Done")
 print("-" * 40)
