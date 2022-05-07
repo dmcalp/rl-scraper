@@ -43,52 +43,62 @@ with open(filename, "r+") as f:
         driver = webdriver.Chrome(
             service=Service("C:\Program Files (x86)\chromedriver.exe"),
             options=options)
-        driver.get(RL_TRACKER_URL)
-        time.sleep(4)  # let table element load
-        source = driver.page_source
 
-        # beautiful soup
-        soup = BeautifulSoup(source, "html.parser")
+        try:
+            driver.get(RL_TRACKER_URL)
+            time.sleep(4)  # let table element load
+            source = driver.page_source
 
-        table_rows = soup.find("tbody").children
-        if table_rows != None:
+            # beautiful soup
+            soup = BeautifulSoup(source, "html.parser")
 
-            csv_data = ""  # data to write to the csv
+            table_rows = soup.find("tbody").children
+            if table_rows != None:
 
-            for row in table_rows:
+                csv_data = ""
 
-                # playlist name (Ranked Doubles 2v2)
-                playlist = row.find("div", {"class": "playlist"}).text.strip()
+                for row in table_rows:
 
-                if playlist != "Un-Ranked":
+                    # playlist name (Ranked Doubles 2v2)
+                    playlist = row.find("div", {
+                        "class": "playlist"
+                    }).text.strip()
 
-                    # rank name (Champion II Division I)
-                    rank = row.find("div", {"class": "rank"}).text
+                    if playlist != "Un-Ranked":
 
-                    # mmr (1194)
-                    mmr_raw = row.find("div", {"class": "value"}).text
-                    mmr = mmr_raw.replace(",", "")
+                        # rank name (Champion II Division I)
+                        rank = row.find("div", {"class": "rank"}).text
 
-                    print(f"Found {playlist} data")
-                    csv_data += f"{playlist},{rank},{mmr},"
+                        # mmr (1194)
+                        mmr_raw = row.find("div", {"class": "value"}).text
+                        mmr = mmr_raw.replace(",", "")
 
-            last_record_list = last_line.split(",")[1::]  # remove date
-            last_record = ",".join(last_record_list)  # rejoin as string
+                        print(f"Found {playlist} data")
+                        csv_data += f"{playlist},{rank},{mmr},"
 
-            if last_record.strip() != csv_data.strip():
-                print(f"Writing data to {filename}")
-                f.write(f"{str(date.today())},{csv_data}")
-                f.write("\n")
+                last_record_list = last_line.split(",")[1::]  # remove date
+                last_record = ",".join(last_record_list)  # rejoin as string
+
+                if last_record.strip() != csv_data.strip():  # data has changed
+                    print(f"Writing data to {filename}")
+                    f.write(f"{str(date.today())},{csv_data}")
+                    f.write("\n")
+                else:
+                    print("Data hasn't changed since last record")
+
             else:
-                print("Data hasn't changed since last record")
-        else:
-            print("Table element couldn't be found")
+                print("Table element couldn't be found")
 
-        print("Closing ChromeDriver")
-        driver.close()
-        driver.quit()
+        except Exception as e:
+            print("-" * 40)
+            print("Something went wrong, please try again.")
+            print(e.msg)
+        finally:
+            print("Quitting ChromeDriver")
+            driver.quit()
+
     else:
-        print(f"Error: Data already found for today")
+        print("Error: Data already found for today")
 
 print("Done")
 print("-" * 40)
